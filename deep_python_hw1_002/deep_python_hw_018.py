@@ -1,113 +1,67 @@
-from typing import List
-
-class Matrix:
-    _rows: int = None
-    _cols: int = None
-    _a_matrix: List[list[int, float]] = None
-
-    def __init__(self, a_matrix: list[list[int, float]]) -> None:
-
-        self._rows = len(a_matrix)
-        self._cols = len(a_matrix[0])
-        self._a_matrix = a_matrix
-
-    def __add__(self, other) -> 'Matrix':
-
-        if not isinstance(other, self.__class__):
-            raise TypeError("Not a 'Matrix'-type object")
-        if self._rows != other._rows or self._cols != other._cols:
-            raise ValueError("Operation not permitted for different-dimensional matrices")
-        new_matrix = [[0 for _ in range(self._cols)] for _ in range(self._rows)]
-        for j in range(self._rows):
-            for i in range(self._cols):
-                new_matrix[j][i] = self._a_matrix[j][i] + other._a_matrix[j][i]
-        return Matrix(new_matrix)
-
-    def __mul__(self, other) -> 'Matrix':
-
-        if isinstance(other, self.__class__):
-            return self.__rmul__(other)
-        elif isinstance(other, int) or isinstance(other, float):
-            new_matrix = [[0 for _ in range(self._cols)] for _ in range(self._rows)]
-            for j in range(self._rows):
-                for i in range(self._cols):
-                    new_matrix[j][i] = self._a_matrix[j][i] * other
-            return Matrix(new_matrix)
-        else:
-            raise TypeError("Unsupported operation")
-
-    def __rmul__(self, other) -> 'Matrix':
-
-        if not isinstance(other, self.__class__):
-            raise TypeError("Not a 'Matrix'-type object")
-        if self._cols != other._rows:
-            raise ValueError("Operation not permitted if rows amount of first matrix "
-                             "is not equal to columns amount of other one")
-        new_matrix = [[0 for _ in range(other._rows)] for _ in range(self._rows)]
-        for j in range(self._rows):
-            for i in range(other._rows):
-                new_matrix[j][i] = self._a_matrix[j][i] * other._a_matrix[i][j]
-        return Matrix(new_matrix)
-
-    def __eq__(self, other) -> bool:
-
-        if self is other:
-            return True
-        if not isinstance(other, self.__class__):
-            raise TypeError("Not a 'Matrix'-type object")
-        if self._rows != other._rows or self._cols != other._cols:
-            return False
-        for j in range(self._rows):
-            for i in range(self._cols):
-                if self._a_matrix[j][i] != other._a_matrix[j][i]:
-                    return False
-        return True
-
-    def __ne__(self, other) -> bool:
-        return not self.__eq__(other)
-
-    def __str__(self) -> str:
-        return '\n'.join(['\t'.join(map(str, row)) for row in self._a_matrix]) + '\n'
-
-    def __repr__(self):
-        return f'Matrix({self._a_matrix})'
+import csv
 
 
-def main():
-    mtx_a = Matrix([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]])
-    mtx_b = Matrix([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]])
-    mtx_c = Matrix([[10, 11, 12], [4, 5, 6], [1, 2, 3], [7, 8, 9]])
-    mtx_d = Matrix([[1, 2, 3, 4, ], [5, 6, 7, 8], [9, 10, 11, 12]])
-    print(repr(mtx_a))
-    print(mtx_a)
-    print(mtx_b)
-    print(mtx_c)
-    print(mtx_d)
+class NameValidator:
+    def __set_name__(self, owner, name):
+        self.name = name
 
-    print(f'{mtx_a == mtx_b=}')
-    print(f'{mtx_a == mtx_b=}')
-    print(f'{mtx_b == mtx_c=}')
-    print(f'{mtx_b != mtx_c=}')
-    print(f'{mtx_c != mtx_d=}')
-    print(mtx_a + mtx_b)
-    print(mtx_a + mtx_c)
-    try:
-        print(mtx_c + mtx_d)
-    except ValueError as exc:
-        print(f'FAIL! {exc.__class__.__name__}: {exc}')
-    try:
-        print(mtx_a * mtx_b)
-    except ValueError as exc:
-        print(f'FAIL! {exc.__class__.__name__}: {exc}')
-    try:
-        print(mtx_a * mtx_d)
-    except ValueError as exc:
-        print(f'FAIL! {exc.__class__.__name__}: {exc}')
-    try:
-        print(mtx_a * 10)
-    except TypeError as exc:
-        print(f'FAIL! {exc.__class__.__name__}: {exc}')
+    def __get__(self, instance, owner):
+        return instance.__dict__[self.name]
+
+    def __set__(self, instance, value):
+        if not all(map(lambda val: val.istitle(), value.split(' '))):
+            raise ValueError(f"ФИО должно начинаться с заглавной буквы!")
+        instance.__dict__[self.name] = value
 
 
-if __name__ == '__main__':
-    main()
+class Student:
+    name = NameValidator()
+
+    def __init__(self, name):
+        self.name = name
+        self.subject_grades = {}
+        self.subject_tests = {}
+
+        with open('3/subjects.csv', 'r') as csv_file:
+            subjects = csv.reader(csv_file, delimiter="\n")
+            for item in subjects:
+                self.subject_grades[item[0]] = []
+                self.subject_tests[item[0]] = []
+
+    def add_score(self, score, subject):
+        if score < 2 or score > 5:
+            raise ValueError("Оценка должна быть от 2 до 5")
+        self.subject_grades[subject].append(score)
+
+    def add_test_result(self, result, subject):
+        if result < 0 or result > 100:
+            raise ValueError("Результат теста должен быть от 0 до 100")
+        self.subject_tests[subject].append(result)
+
+    def average_score_student(self):
+        subject_scores = [sum(score) for score in self.subject_grades.values() if score != []]
+        if not subject_scores:
+            return 0
+        return sum(subject_scores) / len(subject_scores)
+
+    def subject_test_average(self, subject):
+        return subject, sum(self.subject_tests[subject]) / len(self.subject_tests[subject])
+
+
+# Создание экземпляра класса Student
+student = Student("Евдокимов Алексей Николаевич")
+
+# Добавление оценок и результатов тестов
+student.add_score(4, 'Math')
+student.add_score(5, 'Math')
+student.add_score(5, 'Russian')
+
+student.add_test_result(80, 'Math')
+student.add_test_result(90, 'Russian')
+student.add_test_result(20, 'Russian')
+
+# Расчет среднего балла ученика по всем предметам
+print("Средний балл ученика", student.average_score_student())
+
+# Расчет среднего балла по тестам определенного предмета
+print("Средний балл по тесту:", student.subject_test_average('Russian'))
